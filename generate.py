@@ -153,6 +153,8 @@ def gen_log(repo, mirror, repo_dir, commits):
                  f'<td><a href="commit/{h}.html">{esc(subject)}</a></td>'
                  f'<td>{esc(author)}</td></tr>\n')
     body += '</table>\n'
+    if not commits:
+        body += '<div class="notice">no commits yet</div>\n'
     write_page(repo_dir / "index.html", repo["name"], body, rel(repo_dir, OUT))
 
 
@@ -160,7 +162,11 @@ def gen_files(repo, mirror, repo_dir):
     body = repo_header(repo, repo_dir, repo_dir, "Files")
     body += '<table class="list">\n<tr><td>Mode</td><td>Name</td><td>Size</td></tr>\n'
     entries = []
-    for line in git(mirror, "ls-tree", "-r", "-l", "HEAD").splitlines():
+    try:
+        tree = git(mirror, "ls-tree", "-r", "-l", "HEAD").splitlines()
+    except RuntimeError:  # empty repository
+        tree = []
+    for line in tree:
         info, path = line.split("\t", 1)
         mode, otype, _h, size = info.split()
         entries.append((mode, otype, size, path))
@@ -243,7 +249,10 @@ def gen_index(repos):
     body += '<table class="list">\n<tr><td>Name</td><td>Description</td><td>Last commit</td></tr>\n'
     for repo in repos:
         mirror = MIRRORS / f'{repo["name"]}.git'
-        last = git(mirror, "log", "-1", "--format=%as", "HEAD").strip()
+        try:
+            last = git(mirror, "log", "-1", "--format=%as", "HEAD").strip()
+        except RuntimeError:  # empty repository
+            last = "-"
         body += (f'<tr><td><a href="{quote(repo["name"])}/index.html">{esc(repo["name"])}</a></td>'
                  f'<td>{esc(repo["desc"])}</td><td>{last}</td></tr>\n')
     body += '</table>\n'
@@ -266,7 +275,10 @@ def main():
             sys.exit(f"missing mirror {mirror}; run build.sh")
         repo_dir = OUT / repo["name"]
         commits = []
-        log = git(mirror, "log", "--format=%H%x1f%as%x1f%an%x1f%s", "HEAD")
+        try:
+            log = git(mirror, "log", "--format=%H%x1f%as%x1f%an%x1f%s", "HEAD")
+        except RuntimeError:  # empty repository
+            log = ""
         for line in log.splitlines():
             h, at, author, subject = line.split("\x1f")
             commits.append((h, at, author, subject))
