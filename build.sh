@@ -25,6 +25,8 @@ python3 "$BASE/generate.py"
 grep -v '^#' "$BASE/repos.conf" | grep -v '^$' | while IFS='|' read -r name path desc mode; do
     if [ "$mode" = "clone" ]; then
         m="$CACHE/mirrors/$name.git"
+        # no loose objects: Cloudflare mangles them in transit; packs survive
+        git -C "$m" repack -a -d -q --max-pack-size=20m
         git -C "$m" update-server-info
         cp -al "$m" "$CACHE/out/$name.git"
     fi

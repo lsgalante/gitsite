@@ -218,6 +218,25 @@ def gen_refs(repo, mirror, repo_dir):
                rel(repo_dir, OUT))
 
 
+def gen_404():
+    # a real 404.html switches Pages out of SPA-fallback mode; without it,
+    # unknown paths (e.g. git probing loose objects) get index.html with a 200
+    body = (f'<div class="crumbs"><a href="index.html">{SITE_TITLE}</a></div>\n'
+            '<hr>\n<div class="notice">not found</div>\n')
+    write_page(OUT / "404.html", f"{SITE_TITLE}: not found", body, "")
+
+
+def gen_headers(repos):
+    # keep Cloudflare from recompressing/transforming git transport files
+    rules = ""
+    for repo in repos:
+        if repo["clone"]:
+            rules += (f'/{repo["name"]}.git/*\n'
+                      "  Cache-Control: no-transform\n"
+                      "  Content-Type: application/octet-stream\n")
+    (OUT / "_headers").write_text(rules)
+
+
 def gen_index(repos):
     body = (f'<div class="crumbs">{SITE_TITLE}</div>\n'
             f'<div class="desc"><a href="{HOME_URL}">Lucas Galante</a>\'s projects</div>\n<hr>\n')
@@ -258,6 +277,8 @@ def main():
         gen_refs(repo, mirror, repo_dir)
         print(f'{repo["name"]}: {len(commits)} commits, {len(entries)} files')
 
+    gen_404()
+    gen_headers(repos)
     gen_index(repos)
     print(f"wrote {OUT}")
 
