@@ -1,0 +1,124 @@
+:root {
+    font-family: "Circe";
+    font-weight: normal;
+    font-size: 1.05em;
+}
+
+@font-face {
+    font-family: "Circe";
+    src: url("/font/CirceSlabA-Light.woff2") format("woff2");
+}
+
+a {
+    color: #66b3ff;
+    text-decoration: none;
+}
+
+a:hover {
+    color: #99ccff;
+    text-decoration: underline;
+}
+
+body {
+    background-color: #000000;
+    color: #ffffff;
+    margin: 3.5em 4em;
+}
+
+hr {
+    border: none;
+    border-top: 1px solid #606060;
+    margin: 1em 0;
+}
+
+table {
+    border-collapse: collapse;
+}
+
+td {
+    padding: 0.15em 1.5em 0.15em 0;
+    vertical-align: top;
+}
+
+table.list tr:first-child td {
+    color: #a0a0a0;
+}
+
+pre {
+    font-family: monospace;
+    font-size: 0.85rem;
+    line-height: 1.4;
+    overflow-x: auto;
+}
+
+.active {
+    color: #a0a0a0;
+}
+
+.clone {
+    color: #a0a0a0;
+    font-family: monospace;
+    font-size: 0.85rem;
+    margin-top: 0.5em;
+}
+
+.crumbs {
+    margin-bottom: 0.5em;
+}
+
+.desc {
+    color: #a0a0a0;
+}
+
+.df {
+    color: #a0a0a0;
+}
+
+.dh {
+    color: #66b3ff;
+}
+
+.di {
+    color: #8ae28a;
+}
+
+.dd {
+    color: #e08a8a;
+}
+
+.ln {
+    color: #606060;
+}
+
+.mode {
+    font-family: monospace;
+    font-size: 0.85rem;
+}
+
+.msg {
+    font-family: "Circe";
+    font-size: 1rem;
+}
+
+.nav {
+    margin-top: 1em;
+}
+
+.notice {
+    color: #a0a0a0;
+    font-style: italic;
+}
+
+.path {
+    font-family: monospace;
+    font-size: 0.85rem;
+}
+
+.section {
+    color: #a0a0a0;
+    margin: 1em 0 0.3em 0;
+}
+
+.size {
+    text-align: right;
+}
