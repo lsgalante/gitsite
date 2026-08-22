@@ -13,6 +13,11 @@ repos.conf   which repos to publish: name|path|description|mode
 generate.py  the HTML generator
 build.sh     syncs mirrors, runs generate.py, adds clone files
 deploy.sh    pushes the built site to Cloudflare Pages
+autodeploy.sh
+             build + deploy, but only when a listed repo's HEAD moved
+gitsite.service, gitsite.timer
+             systemd user units that run autodeploy.sh hourly — see
+             "Automatic publishing" below; nothing here installs them
 style.css    matches lucas.co (black, white, blue links, Circe)
 
 Workflow
@@ -22,6 +27,24 @@ Workflow
 
 Preview locally:
 python3 -m http.server -d ~/.cache/gitsite/out 8931
+
+Automatic publishing
+--------------------
+gitsite.timer runs autodeploy.sh hourly (randomized up to 5m; Persistent
+so a run missed while the machine was off catches up), and autodeploy.sh
+rebuilds + deploys only when a repo in repos.conf has a new HEAD. That
+timer is what makes "committing locally IS publishing" true — the repos
+it mirrors have no push remotes, so if it stops running, nothing reaches
+git.lucas.co and the local commits look published but aren't.
+
+The units are NOT installed by any script here. On a new machine:
+
+    cp gitsite.service gitsite.timer ~/.config/systemd/user/
+    systemctl --user daemon-reload
+    systemctl --user enable --now gitsite.timer
+
+Check:  systemctl --user list-timers gitsite.timer
+Log:    ~/.cache/gitsite/autodeploy.log
 
 One-time Cloudflare setup
 -------------------------
