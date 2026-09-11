@@ -53,6 +53,25 @@ One-time Cloudflare setup
 3. Cloudflare dashboard -> Workers & Pages -> git-lucas-co ->
    Custom domains -> add git.lucas.co
 
+Credentials
+-----------
+deploy.sh reads ~/.config/gitsite/env (mode 600, NOT versioned), the same
+shape restic-backup.sh uses:
+
+    CLOUDFLARE_API_TOKEN=...
+    CLOUDFLARE_ACCOUNT_ID=...
+
+A token is needed for unattended runs: wrangler refuses OAuth in
+non-interactive environments, so the gitsite.timer unit cannot use a login
+session. The account id used to be inline in deploy.sh, which stopped being
+reasonable once this repo started publishing itself to git.lucas.co. It is
+still in this repo's git history; it is an identifier rather than a
+credential, and does nothing without the token, which has never been in the
+repo.
+
+The older ~/.config/gitsite-cf-token (token only, no account id) is still
+honoured as a fallback for a machine that has not been migrated.
+
 Notes
 -----
 - website repo is mode "browse" because its history is 452MB of media;
