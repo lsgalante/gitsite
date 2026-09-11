@@ -1,0 +1,3 @@
+# wrangler's local cache: account id, account name and project metadata.
+# Machine state, not source -- and it lands on git.lucas.co if tracked.
+.wrangler/
