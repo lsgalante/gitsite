@@ -9,7 +9,12 @@ repos.conf, plus dumb-http clone support so
 Files
 -----
 repos.conf   which repos to publish: name|path|description|mode
+             path is the BARE repo in ~/git -- what this reads HEAD from,
+             not a work tree
              mode "clone" = browse + clonable, "browse" = browse only
+git-bare-sync.sh
+             creates/maintains the ~/git bare repos and pushes every work
+             tree into them -- see "Publishing model" below
 generate.py  the HTML generator
 build.sh     syncs mirrors, runs generate.py, adds clone files
 deploy.sh    pushes the built site to Cloudflare Pages
@@ -32,10 +37,9 @@ Automatic publishing
 --------------------
 gitsite.timer runs autodeploy.sh hourly (randomized up to 5m; Persistent
 so a run missed while the machine was off catches up), and autodeploy.sh
-rebuilds + deploys only when a repo in repos.conf has a new HEAD. That
-timer is what makes "committing locally IS publishing" true — the repos
-it mirrors have no push remotes, so if it stops running, nothing reaches
-git.lucas.co and the local commits look published but aren't.
+rebuilds + deploys only when a repo in repos.conf has a new HEAD. If it
+stops running, nothing reaches git.lucas.co and pushed commits look
+published but aren't.
 
 The units are NOT installed by any script here. On a new machine:
 
@@ -45,6 +49,39 @@ The units are NOT installed by any script here. On a new machine:
 
 Check:  systemctl --user list-timers gitsite.timer
 Log:    ~/.cache/gitsite/autodeploy.log
+
+Publishing model
+----------------
+Committing is NOT publishing; pushing is. Each repo's origin is a local
+bare repo under ~/git (real, pushable, and a second copy on disk); this
+site mirrors from those, and repos.conf lists them. So:
+
+    git commit ...              # local only
+    git push origin <branch>    # the publishing step
+                                # gitsite.timer then deploys it
+
+That replaced an older arrangement where origin was this site itself --
+fetch-only, static, no receive-pack -- and "published" meant "a timer
+happened to run", with no signal either way.
+
+git-bare-sync.sh creates any missing bare repos and pushes every repo in
+repos.conf into its own, so it is the bulk version of that push step:
+
+    git-bare-sync.sh --dry-run   # show what would be pushed
+    git-bare-sync.sh             # do it
+
+It finds each repo's work tree by NAME under ~/projects/cce, ~/projects
+and ~/Dropbox/src (override with GIT_WORK_ROOTS), because repos.conf
+records only the bare path. A name it cannot resolve fails the run rather
+than being skipped: it previously read repos.conf's bare path AS a work
+tree, found no .git, and silently skipped all 34 repos -- which left 21
+of them holding unpushed commits (2026-09-18) while the docs still said a
+commit was enough.
+
+It lives here rather than loose in ~/.local/bin, where it was unversioned
+and one rm from gone; ~/.local/bin/git-bare-sync.sh is a symlink to this
+copy, so PATH and the docs that name that path keep working and there is
+only one file to edit.
 
 One-time Cloudflare setup
 -------------------------
