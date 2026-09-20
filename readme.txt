@@ -78,6 +78,23 @@ tree, found no .git, and silently skipped all 34 repos -- which left 21
 of them holding unpushed commits (2026-09-18) while the docs still said a
 commit was enough.
 
+Run it only on the machine that owns ~/git. The bare repos are canonical
+and live on exactly one host; on a second machine a work tree's origin is
+a URL pointing back here over the network, and this script -- which
+rewrites origin to $BARE_ROOT/<name>.git -- would hand that machine its
+own divergent bare layer and file the real remote away under "previous".
+It would then look like it was publishing while pushing to its own disk,
+which is the failure the bare layer was introduced to eliminate. So a
+remote-looking origin (a URL scheme, or scp-style host:path) is refused,
+and refused before anything is created, since creating a bare repo is
+already a mutation. On a second machine, just use git:
+
+    git push origin <branch>    # same publishing step, no bulk tool
+
+GIT_BARE_HOST=1 overrides the refusal. That is the migration case this
+script was written for: an old fetch-only origin deliberately replaced by
+a local bare repo.
+
 It lives here rather than loose in ~/.local/bin, where it was unversioned
 and one rm from gone; ~/.local/bin/git-bare-sync.sh is a symlink to this
 copy, so PATH and the docs that name that path keep working and there is
