@@ -63,23 +63,6 @@ The 27 crates pinned to https://git.lucas.co/<name>.git?rev=... keep
 working because the dumb-http clone dirs are built from the same mirrors;
 a rev exists here as long as it is reachable on GitHub.
 
-History, for when something looks odd:
-
-- Until 2026-09-18 each repo's origin was this site itself: fetch-only,
-  static, no receive-pack, so "published" meant "a timer happened to run".
-- 2026-09-18..20 a local bare-repo layer under ~/git was the origin and
-  this site mirrored from it (git-bare-sync.sh, now deleted). A Forgejo
-  instance at forge.lucas.co briefly mirrored the same layer.
-- 2026-09-20 everything moved to GitHub. Three repos were rewritten on the
-  way, so their hashes before that date do not match the ones here:
-  cce-fonts and cce-gallery had a committed target/ directory (blobs up to
-  403MB; GitHub refuses anything over 100MB), and cce-system-interface had
-  a Google OAuth client ID and secret compiled into
-  src/pages/accounts.rs. Both values are scrubbed from every commit; the
-  secret was public here and had to be rotated regardless.
-- hou-control already existed on GitHub with an unrelated 2024-2025
-  history; that is preserved there as branch main-2024.
-
 One-time Cloudflare setup
 -------------------------
 1. npx wrangler login
