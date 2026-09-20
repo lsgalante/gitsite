@@ -45,7 +45,7 @@
 set -eu
 
 BARE_ROOT="${GIT_BARE_ROOT:-$HOME/git}"
-REPOS_CONF="${REPOS_CONF:-$HOME/Dropbox/src/gitsite/repos.conf}"
+REPOS_CONF="${REPOS_CONF:-$HOME/projects/gitsite/repos.conf}"
 DRY=""
 [ "${1:-}" = "--dry-run" ] && DRY=1
 
