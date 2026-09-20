@@ -1,0 +1,27 @@
+#!/bin/sh
+# post-commit hook: push the branch just committed to origin (GitHub).
+#
+# Installed into every repo in repos.conf by install-hooks.sh, as a symlink to
+# this file, so there is one copy to edit. It makes a commit also the
+# publishing step: without it, committing is local only and nothing reaches
+# GitHub (or git.lucas.co, which mirrors GitHub hourly) until a manual push.
+#
+# It never forces. If the push is rejected -- the branch moved on GitHub, the
+# network is down -- the commit stands and the message below says so; fix it
+# with an ordinary git pull / git push. Nothing is pushed on a detached HEAD
+# or while a rebase is replaying commits.
+
+branch=$(git symbolic-ref --quiet --short HEAD) || exit 0
+git_dir=$(git rev-parse --git-dir)
+if [ -d "$git_dir/rebase-merge" ] || [ -d "$git_dir/rebase-apply" ]; then
+    exit 0
+fi
+git remote get-url origin >/dev/null 2>&1 || exit 0
+
+if out=$(git push --quiet --set-upstream origin "$branch" 2>&1); then
+    echo "pushed $branch to origin"
+else
+    echo "post-commit: push of $branch FAILED -- the commit is local only:" >&2
+    printf '%s\n' "$out" | sed 's/^/  /' >&2
+fi
+exit 0

@@ -20,6 +20,11 @@ autodeploy.sh
 gitsite.service, gitsite.timer
              systemd user units that run autodeploy.sh hourly — see
              "Automatic publishing" below; nothing here installs them
+post-commit-push
+             git post-commit hook: pushes the committed branch to origin,
+             so committing is publishing -- see "Publishing model" below
+install-hooks.sh
+             symlinks post-commit-push into every repo in repos.conf
 style.css    matches lucas.co (black, white, blue links, Circe)
 
 Workflow
@@ -59,6 +64,13 @@ GitHub (git ls-remote) whether any HEAD moved. So:
     git push                    # the publishing step
                                 # gitsite.timer then deploys it
 
+Every repo in repos.conf has post-commit-push installed as its post-commit
+hook (install-hooks.sh does that; re-run it after cloning a repo fresh or
+adding one), so in practice the push happens on commit and a plain commit
+IS the publishing step. The hook never forces: a rejected push leaves the
+commit local and says so, and you resolve it with git pull / git push as
+usual. It does nothing on a detached HEAD or mid-rebase.
+
 The 27 crates pinned to https://git.lucas.co/<name>.git?rev=... keep
 working because the dumb-http clone dirs are built from the same mirrors;
 a rev exists here as long as it is reachable on GitHub.
@@ -97,4 +109,5 @@ Notes
   (Cloudflare rejects files over 25MB). Delete a mirror dir to force a
   fresh re-mirror.
 - To add a repo: create it on GitHub (gh repo create lsgalante/<name>
-  --public), push, add a line to repos.conf, run build.sh + deploy.sh.
+  --public), push, add a line to repos.conf, run install-hooks.sh, then
+  build.sh + deploy.sh.
