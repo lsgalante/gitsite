@@ -8,7 +8,9 @@ STATE="$HOME/.cache/gitsite/last-publish-heads"
 
 current=$(grep -v '^#' "$BASE/repos.conf" | grep -v '^$' | \
     while IFS='|' read -r name path desc mode; do
-        echo "$name $(git -C "$path" rev-parse HEAD 2>/dev/null || echo empty)"
+        # path is a URL (GitHub); ls-remote is one round trip per repo. A
+        # repo with no commits yet answers nothing, hence "empty".
+        echo "$name $(git ls-remote "$path" HEAD 2>/dev/null | cut -f1 | grep . || echo empty)"
     done | sha256sum | cut -d' ' -f1)
 
 if [ -f "$STATE" ] && [ "$(cat "$STATE")" = "$current" ]; then

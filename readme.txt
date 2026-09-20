@@ -9,12 +9,9 @@ repos.conf, plus dumb-http clone support so
 Files
 -----
 repos.conf   which repos to publish: name|path|description|mode
-             path is the BARE repo in ~/git -- what this reads HEAD from,
-             not a work tree
+             path is the GitHub URL the repo is mirrored from -- what
+             this reads HEAD from, not a work tree
              mode "clone" = browse + clonable, "browse" = browse only
-git-bare-sync.sh
-             creates/maintains the ~/git bare repos and pushes every work
-             tree into them -- see "Publishing model" below
 generate.py  the HTML generator
 build.sh     syncs mirrors, runs generate.py, adds clone files
 deploy.sh    pushes the built site to Cloudflare Pages
@@ -52,53 +49,36 @@ Log:    ~/.cache/gitsite/autodeploy.log
 
 Publishing model
 ----------------
-Committing is NOT publishing; pushing is. Each repo's origin is a local
-bare repo under ~/git (real, pushable, and a second copy on disk); this
-site mirrors from those, and repos.conf lists them. So:
+Committing is NOT publishing; pushing is. Each repo's origin is
+https://github.com/lsgalante/<name>.git, GitHub is canonical, and this
+site is a mirror of it: repos.conf lists the GitHub URLs, build.sh keeps a
+bare mirror of each in ~/.cache/gitsite/mirrors, and autodeploy.sh asks
+GitHub (git ls-remote) whether any HEAD moved. So:
 
     git commit ...              # local only
-    git push origin <branch>    # the publishing step
+    git push                    # the publishing step
                                 # gitsite.timer then deploys it
 
-That replaced an older arrangement where origin was this site itself --
-fetch-only, static, no receive-pack -- and "published" meant "a timer
-happened to run", with no signal either way.
+The 27 crates pinned to https://git.lucas.co/<name>.git?rev=... keep
+working because the dumb-http clone dirs are built from the same mirrors;
+a rev exists here as long as it is reachable on GitHub.
 
-git-bare-sync.sh creates any missing bare repos and pushes every repo in
-repos.conf into its own, so it is the bulk version of that push step:
+History, for when something looks odd:
 
-    git-bare-sync.sh --dry-run   # show what would be pushed
-    git-bare-sync.sh             # do it
-
-It finds each repo's work tree by NAME under ~/projects/cce, ~/projects
-and ~/Dropbox/src (override with GIT_WORK_ROOTS), because repos.conf
-records only the bare path. A name it cannot resolve fails the run rather
-than being skipped: it previously read repos.conf's bare path AS a work
-tree, found no .git, and silently skipped all 34 repos -- which left 21
-of them holding unpushed commits (2026-09-18) while the docs still said a
-commit was enough.
-
-Run it only on the machine that owns ~/git. The bare repos are canonical
-and live on exactly one host; on a second machine a work tree's origin is
-a URL pointing back here over the network, and this script -- which
-rewrites origin to $BARE_ROOT/<name>.git -- would hand that machine its
-own divergent bare layer and file the real remote away under "previous".
-It would then look like it was publishing while pushing to its own disk,
-which is the failure the bare layer was introduced to eliminate. So a
-remote-looking origin (a URL scheme, or scp-style host:path) is refused,
-and refused before anything is created, since creating a bare repo is
-already a mutation. On a second machine, just use git:
-
-    git push origin <branch>    # same publishing step, no bulk tool
-
-GIT_BARE_HOST=1 overrides the refusal. That is the migration case this
-script was written for: an old fetch-only origin deliberately replaced by
-a local bare repo.
-
-It lives here rather than loose in ~/.local/bin, where it was unversioned
-and one rm from gone; ~/.local/bin/git-bare-sync.sh is a symlink to this
-copy, so PATH and the docs that name that path keep working and there is
-only one file to edit.
+- Until 2026-09-18 each repo's origin was this site itself: fetch-only,
+  static, no receive-pack, so "published" meant "a timer happened to run".
+- 2026-09-18..20 a local bare-repo layer under ~/git was the origin and
+  this site mirrored from it (git-bare-sync.sh, now deleted). A Forgejo
+  instance at forge.lucas.co briefly mirrored the same layer.
+- 2026-09-20 everything moved to GitHub. Three repos were rewritten on the
+  way, so their hashes before that date do not match the ones here:
+  cce-fonts and cce-gallery had a committed target/ directory (blobs up to
+  403MB; GitHub refuses anything over 100MB), and cce-system-interface had
+  a Google OAuth client ID and secret compiled into
+  src/pages/accounts.rs. Both values are scrubbed from every commit; the
+  secret was public here and had to be rotated regardless.
+- hou-control already existed on GitHub with an unrelated 2024-2025
+  history; that is preserved there as branch main-2024.
 
 One-time Cloudflare setup
 -------------------------
@@ -133,4 +113,5 @@ Notes
 - Mirrors live in ~/.cache/gitsite/mirrors, repacked into <=20MB packs
   (Cloudflare rejects files over 25MB). Delete a mirror dir to force a
   fresh re-mirror.
-- To add a repo: add a line to repos.conf, run build.sh + deploy.sh.
+- To add a repo: create it on GitHub (gh repo create lsgalante/<name>
+  --public), push, add a line to repos.conf, run build.sh + deploy.sh.

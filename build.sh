@@ -16,6 +16,10 @@ grep -v '^#' "$BASE/repos.conf" | grep -v '^$' | while IFS='|' read -r name path
         # small packfiles: Cloudflare Pages rejects files over 25MB
         git -C "$m" repack -a -d -q --max-pack-size=20m
     else
+        # repos.conf is the source of truth for where a repo lives; a mirror
+        # made when it pointed elsewhere (the ~/git bare layer, before
+        # 2026-09-20) follows it here rather than fetching from a stale path.
+        git -C "$m" remote set-url origin "$path"
         git -C "$m" fetch --quiet --prune origin
     fi
 done
