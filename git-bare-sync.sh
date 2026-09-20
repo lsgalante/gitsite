@@ -24,8 +24,23 @@
 # resolved by name under $WORK_ROOTS. A name that resolves to nothing is
 # reported and fails the run; it is never silently skipped.
 #
+# Run it only on the machine that owns the bare layer. The bare repos are
+# canonical and live on exactly one host; on any other machine a work tree's
+# origin is a URL pointing back at that host over the network, and this script
+# -- which computes bare="$BARE_ROOT/$name.git" and rewrites origin to that
+# local path -- would hand the second machine its own divergent bare repos and
+# file the real remote away under "previous". It would then look like it was
+# publishing while pushing to its own disk, which is the failure this whole
+# arrangement exists to prevent. A remote-looking origin is therefore refused.
+# On a second machine just use git: `git push origin <branch>`.
+#
+# GIT_BARE_HOST=1 overrides the refusal. That is the migration case this script
+# was written for, where an old fetch-only origin (git.lucas.co, github) is
+# deliberately replaced by a local bare repo.
+#
 # Usage:  git-bare-sync.sh [--dry-run]
-#   env:  GIT_BARE_ROOT (default ~/git), GIT_WORK_ROOTS, REPOS_CONF
+#   env:  GIT_BARE_ROOT (default ~/git), GIT_WORK_ROOTS, REPOS_CONF,
+#         GIT_BARE_HOST
 
 set -eu
 
@@ -66,6 +81,19 @@ run() {
     fi
 }
 
+# Does this origin point at a bare layer on another machine? A local bare repo
+# is an absolute path; a URL scheme or an scp-style host:path is somewhere
+# else. file:// is a URL but still local, so it is not remote.
+is_remote_url() {
+    case "$1" in
+        ''|/*|./*|../*|~*) return 1 ;;
+        file://*)          return 1 ;;
+        *://*)             return 0 ;;
+        *:*)               return 0 ;;
+        *)                 return 1 ;;
+    esac
+}
+
 # A name for an existing origin, so replacing it loses no information.
 preserved_name() {
     case "$1" in
@@ -87,6 +115,21 @@ sync_one() (
     [ -d "$path/.git" ] || { say "  skip $path (not a git work tree)"; exit 0; }
     name=$(basename "$path")
     bare="$BARE_ROOT/$name.git"
+    current=$(git -C "$path" remote get-url origin 2>/dev/null || true)
+
+    # Client-mode guard, before anything is written: creating the bare repo is
+    # itself a mutation, so the origin has to be inspected first.
+    if [ -z "${GIT_BARE_HOST:-}" ] && is_remote_url "$current"; then
+        say "  !! $name: origin is $current"
+        say "     That is a bare layer on another machine. Running here would"
+        say "     replace it with $bare, giving this machine its own divergent"
+        say "     bare repos while the real remote is filed away as 'previous'."
+        say "     Push from here with git directly: git push origin <branch>."
+        say "     Run this only on the host that owns $BARE_ROOT."
+        say "     GIT_BARE_HOST=1 overrides, for replacing a legacy origin."
+        fail
+        exit $rc
+    fi
 
     if [ -d "$bare" ]; then
         say "  $name: bare exists"
@@ -99,7 +142,6 @@ sync_one() (
         run git -C "$bare" config gc.auto 6700
     fi
 
-    current=$(git -C "$path" remote get-url origin 2>/dev/null || true)
     if [ -n "$current" ]; then
         case "$current" in
             "$bare") : ;;   # already pointed at the bare repo
