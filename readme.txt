@@ -23,8 +23,13 @@ gitsite.service, gitsite.timer
 post-commit-push
              git post-commit hook: pushes the committed branch to origin,
              so committing is publishing -- see "Publishing model" below
+pre-commit-scan
+             git pre-commit hook: refuses a commit whose staged changes
+             look like a secret (gitleaks), since the push hook would
+             publish it seconds later; warns and lets the commit through
+             where gitleaks is not installed
 install-hooks.sh
-             symlinks post-commit-push into every repo in repos.conf
+             symlinks both hooks into every repo in repos.conf
 style.css    matches lucas.co (black, white, blue links, Circe)
 
 Workflow
@@ -70,6 +75,12 @@ adding one), so in practice the push happens on commit and a plain commit
 IS the publishing step. The hook never forces: a rejected push leaves the
 commit local and says so, and you resolve it with git pull / git push as
 usual. It does nothing on a detached HEAD or mid-rebase.
+
+Because of that, pre-commit-scan runs first: with gitleaks installed it
+scans the staged diff and refuses a commit that looks like it carries a
+credential, so nothing of the kind reaches GitHub. Without gitleaks the
+commit goes through with a warning -- install it (pacman -S gitleaks) to
+have the check actually run.
 
 The 27 crates pinned to https://git.lucas.co/<name>.git?rev=... keep
 working because the dumb-http clone dirs are built from the same mirrors;

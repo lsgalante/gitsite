@@ -1,0 +1,37 @@
+#!/bin/sh
+# pre-commit hook: refuse a commit whose staged changes look like a secret.
+#
+# Installed by install-hooks.sh next to post-commit-push, and it exists
+# because of that hook: a commit here is on GitHub seconds later, so there is
+# no window to notice a pasted credential before it is public. Only the
+# staged diff is scanned, so it costs well under a second.
+#
+# Uses gitleaks when it is on PATH. Without it the commit goes through, with a
+# warning on stderr -- a fresh machine must still be able to commit -- so
+# install it to get the protection: `pacman -S gitleaks` on Arch, `brew
+# install gitleaks` on macOS, or a binary from
+# https://github.com/gitleaks/gitleaks/releases.
+#
+# A finding blocks the commit and prints where it is, value redacted. For a
+# true false positive, allowlist it in the repo's .gitleaks.toml or pass
+# --no-verify to that one commit -- remembering that the push hook publishes
+# whatever gets past this one.
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+    echo "pre-commit: gitleaks is not installed -- staged changes were NOT scanned for secrets" >&2
+    exit 0
+fi
+
+# `gitleaks git --pre-commit` is the 8.19+ spelling; older releases have
+# `protect` instead. Both scan only what is staged.
+if gitleaks git --help >/dev/null 2>&1; then
+    gitleaks git --pre-commit --staged --redact --verbose --no-banner
+else
+    gitleaks protect --staged --redact --verbose --no-banner
+fi
+status=$?
+if [ "$status" -ne 0 ]; then
+    echo "pre-commit: the staged changes look like they contain a secret -- commit refused." >&2
+    echo "  false positive? allowlist it in .gitleaks.toml, or git commit --no-verify" >&2
+fi
+exit "$status"

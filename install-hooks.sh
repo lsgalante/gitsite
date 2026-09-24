@@ -1,7 +1,8 @@
 #!/bin/sh
-# Symlink post-commit-push into every repo listed in repos.conf, as its
-# post-commit hook. Safe to re-run: an existing symlink is refreshed, and a
-# hook that is a real file (someone's own) is left alone and reported.
+# Symlink the hooks into every repo listed in repos.conf: post-commit-push as
+# its post-commit hook and pre-commit-scan as its pre-commit hook. Safe to
+# re-run: an existing symlink is refreshed, and a hook that is a real file
+# (someone's own) is left alone and reported.
 #
 # Work trees are found by NAME under $GIT_WORK_ROOTS, since repos.conf records
 # only where a repo is mirrored from. A name that resolves to nothing fails
@@ -9,7 +10,8 @@
 set -eu
 
 BASE=$(dirname "$(readlink -f "$0")")
-HOOK="$BASE/post-commit-push"
+# hook-name=file, one pair per word.
+HOOKS="pre-commit=pre-commit-scan post-commit=post-commit-push"
 WORK_ROOTS="${GIT_WORK_ROOTS:-$HOME/projects/cce $HOME/projects}"
 FAILED=""
 
@@ -25,14 +27,21 @@ for name in $names; do
         continue
     fi
     hooks=$(git -C "$wt" rev-parse --path-format=absolute --git-path hooks)
-    dest="$hooks/post-commit"
-    if [ -e "$dest" ] && [ ! -L "$dest" ]; then
-        echo "!! $name: $dest exists and is not a symlink -- left alone"
+    mkdir -p "$hooks"
+    bad=""
+    for pair in $HOOKS; do
+        dest="$hooks/${pair%%=*}"
+        if [ -e "$dest" ] && [ ! -L "$dest" ]; then
+            echo "!! $name: $dest exists and is not a symlink -- left alone"
+            bad=1
+            continue
+        fi
+        ln -sfn "$BASE/${pair#*=}" "$dest"
+    done
+    if [ -n "$bad" ]; then
         FAILED="$FAILED $name"
         continue
     fi
-    mkdir -p "$hooks"
-    ln -sfn "$HOOK" "$dest"
     echo "   $name"
 done
 
@@ -41,4 +50,4 @@ if [ -n "$FAILED" ]; then
     echo "done, with failures:$FAILED"
     exit 1
 fi
-echo "done: post-commit hook installed in every repo"
+echo "done: pre-commit and post-commit hooks installed in every repo"
