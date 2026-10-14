@@ -1,124 +1,41 @@
-git.lucas.co
-============
+gitsite
+=======
 
-Static git repo browser for Cloudflare Pages. Generates HTML pages
-(log, commits with diffs, file browser, refs) for the repos listed in
-repos.conf, plus dumb-http clone support so
-`git clone https://git.lucas.co/<name>.git` works from static hosting.
+The git hooks every repo shares, and the list of repos that get them.
+
+This repo used to also build git.lucas.co, a static mirror of the repos.
+That site was retired on 2026-10-14: GitHub (github.com/lsgalante) is the
+only place the repos are published. The name stayed because every repo's
+hooks are symlinks into this directory.
 
 Files
 -----
-repos.conf   which repos to publish: name|path|description|mode
-             path is the GitHub URL the repo is mirrored from -- what
-             this reads HEAD from, not a work tree
-             mode "clone" = browse + clonable, "browse" = browse only
-generate.py  the HTML generator
-build.sh     syncs mirrors, runs generate.py, adds clone files
-deploy.sh    pushes the built site to Cloudflare Pages
-autodeploy.sh
-             build + deploy, but only when a listed repo's HEAD moved
-gitsite.service, gitsite.timer
-             systemd user units that run autodeploy.sh hourly — see
-             "Automatic publishing" below; nothing here installs them
-post-commit-push
-             git post-commit hook: pushes the committed branch to origin,
-             so committing is publishing -- see "Publishing model" below
-pre-commit-scan
-             git pre-commit hook: refuses a commit whose staged changes
-             look like a secret (gitleaks), since the push hook would
-             publish it seconds later; warns and lets the commit through
-             where gitleaks is not installed
-install-hooks.sh
-             symlinks both hooks into every repo in repos.conf
-style.css    matches lucas.co (black, white, blue links, Circe)
-
-Workflow
---------
-./build.sh    # output goes to ~/.cache/gitsite/out (not in Dropbox)
-./deploy.sh   # needs one-time `npx wrangler login`
-
-Preview locally:
-python3 -m http.server -d ~/.cache/gitsite/out 8931
-
-Automatic publishing
---------------------
-gitsite.timer runs autodeploy.sh hourly (randomized up to 5m; Persistent
-so a run missed while the machine was off catches up), and autodeploy.sh
-rebuilds + deploys only when a repo in repos.conf has a new HEAD. If it
-stops running, nothing reaches git.lucas.co and pushed commits look
-published but aren't.
-
-The units are NOT installed by any script here. On a new machine:
-
-    cp gitsite.service gitsite.timer ~/.config/systemd/user/
-    systemctl --user daemon-reload
-    systemctl --user enable --now gitsite.timer
-
-Check:  systemctl --user list-timers gitsite.timer
-Log:    ~/.cache/gitsite/autodeploy.log
+repos.conf        the repos: name|GitHub URL|description|mode (mode is
+                  left over from the mirror and unused)
+post-commit-push  git post-commit hook: pushes the committed branch to
+                  origin, so committing is publishing
+pre-commit-scan   git pre-commit hook: refuses a commit whose staged
+                  changes look like a secret (gitleaks), since the push
+                  hook would publish it seconds later; warns and lets the
+                  commit through where gitleaks is not installed
+install-hooks.sh  symlinks both hooks into every repo in repos.conf
 
 Publishing model
 ----------------
 Committing is NOT publishing; pushing is. Each repo's origin is
-https://github.com/lsgalante/<name>.git, GitHub is canonical, and this
-site is a mirror of it: repos.conf lists the GitHub URLs, build.sh keeps a
-bare mirror of each in ~/.cache/gitsite/mirrors, and autodeploy.sh asks
-GitHub (git ls-remote) whether any HEAD moved. So:
+https://github.com/lsgalante/<name>.git. Every repo in repos.conf has
+post-commit-push as its post-commit hook, so in practice the push happens
+on commit and a plain commit IS the publishing step. The hook never forces:
+a rejected push leaves the commit local and says so, and you resolve it
+with git pull / git push as usual. It does nothing on a detached HEAD or
+mid-rebase.
 
-    git commit ...              # local only
-    git push                    # the publishing step
-                                # gitsite.timer then deploys it
+pre-commit-scan runs first: with gitleaks installed it scans the staged
+diff and refuses a commit that looks like it carries a credential. Without
+gitleaks the commit goes through with a warning (pacman -S gitleaks).
 
-Every repo in repos.conf has post-commit-push installed as its post-commit
-hook (install-hooks.sh does that; re-run it after cloning a repo fresh or
-adding one), so in practice the push happens on commit and a plain commit
-IS the publishing step. The hook never forces: a rejected push leaves the
-commit local and says so, and you resolve it with git pull / git push as
-usual. It does nothing on a detached HEAD or mid-rebase.
-
-Because of that, pre-commit-scan runs first: with gitleaks installed it
-scans the staged diff and refuses a commit that looks like it carries a
-credential, so nothing of the kind reaches GitHub. Without gitleaks the
-commit goes through with a warning -- install it (pacman -S gitleaks) to
-have the check actually run.
-
-The 27 crates pinned to https://git.lucas.co/<name>.git?rev=... keep
-working because the dumb-http clone dirs are built from the same mirrors;
-a rev exists here as long as it is reachable on GitHub.
-
-One-time Cloudflare setup
--------------------------
-1. npx wrangler login
-2. ./deploy.sh (creates the "git-lucas-co" Pages project on first run)
-3. Cloudflare dashboard -> Workers & Pages -> git-lucas-co ->
-   Custom domains -> add git.lucas.co
-
-Credentials
------------
-deploy.sh reads ~/.config/gitsite/env (mode 600, NOT versioned), the same
-shape restic-backup.sh uses:
-
-    CLOUDFLARE_API_TOKEN=...
-    CLOUDFLARE_ACCOUNT_ID=...
-
-A token is needed for unattended runs: wrangler refuses OAuth in
-non-interactive environments, so the gitsite.timer unit cannot use a login
-session. The account id used to be inline in deploy.sh, which stopped being
-reasonable once this repo started publishing itself to git.lucas.co. It is
-still in this repo's git history; it is an identifier rather than a
-credential, and does nothing without the token, which has never been in the
-repo.
-
-The older ~/.config/gitsite-cf-token (token only, no account id) is still
-honoured as a fallback for a machine that has not been migrated.
-
-Notes
------
-- website repo is mode "browse" because its history is 452MB of media;
-  flip to "clone" in repos.conf if you want it clonable anyway.
-- Mirrors live in ~/.cache/gitsite/mirrors, repacked into <=20MB packs
-  (Cloudflare rejects files over 25MB). Delete a mirror dir to force a
-  fresh re-mirror.
-- To add a repo: create it on GitHub (gh repo create lsgalante/<name>
-  --public), push, add a line to repos.conf, run install-hooks.sh, then
-  build.sh + deploy.sh.
+Adding a repo
+-------------
+Create it on GitHub (gh repo create lsgalante/<name> --public), push, add a
+line to repos.conf, and run install-hooks.sh. Re-run install-hooks.sh after
+cloning a repo fresh, too.

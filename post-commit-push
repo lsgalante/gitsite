@@ -4,7 +4,7 @@
 # Installed into every repo in repos.conf by install-hooks.sh, as a symlink to
 # this file, so there is one copy to edit. It makes a commit also the
 # publishing step: without it, committing is local only and nothing reaches
-# GitHub (or git.lucas.co, which mirrors GitHub hourly) until a manual push.
+# GitHub until a manual push.
 #
 # It never forces. If the push is rejected -- the branch moved on GitHub, the
 # network is down -- the commit stands and the message below says so; fix it

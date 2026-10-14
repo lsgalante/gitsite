@@ -1,8 +1,0 @@
-[Unit]
-Description=Publish git.lucas.co if repos changed
-
-[Service]
-Type=oneshot
-ExecStart=%h/projects/gitsite/autodeploy.sh
-StandardOutput=append:%h/.cache/gitsite/autodeploy.log
-StandardError=append:%h/.cache/gitsite/autodeploy.log
