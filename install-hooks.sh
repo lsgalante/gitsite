@@ -5,7 +5,7 @@
 # (someone's own) is left alone and reported.
 #
 # Work trees are found by NAME under $GIT_WORK_ROOTS, since repos.conf records
-# only where a repo is mirrored from. A name that resolves to nothing fails
+# only its GitHub URL. A name that resolves to nothing fails
 # the run rather than being skipped.
 set -eu
 
