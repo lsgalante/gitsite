@@ -16,6 +16,21 @@
 # true false positive, allowlist it in the repo's .gitleaks.toml or pass
 # --no-verify to that one commit -- remembering that the push hook publishes
 # whatever gets past this one.
+#
+# In the cce workspace it first asks cce-lease (cce-compositor/scripts; see
+# WORKSPACE.md "Concurrent sessions") whether a Claude session is committing
+# another session's work: a crate another live session holds, or files that
+# were already uncommitted when it took the lease. Only its exit 2 refuses; a
+# commit made outside Claude, a repo outside the workspace or a broken check
+# goes through.
+
+top=$(git rev-parse --show-toplevel)
+for lease in "$top/../cce-compositor/scripts/cce-lease" "$top/cce-compositor/scripts/cce-lease"; do
+    [ -x "$lease" ] || continue
+    "$lease" check-commit
+    [ "$?" -eq 2 ] && exit 1
+    break
+done
 
 if ! command -v gitleaks >/dev/null 2>&1; then
     echo "pre-commit: gitleaks is not installed -- staged changes were NOT scanned for secrets" >&2

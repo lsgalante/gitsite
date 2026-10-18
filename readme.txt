@@ -17,7 +17,10 @@ post-commit-push  git post-commit hook: pushes the committed branch to
 pre-commit-scan   git pre-commit hook: refuses a commit whose staged
                   changes look like a secret (gitleaks), since the push
                   hook would publish it seconds later; warns and lets the
-                  commit through where gitleaks is not installed
+                  commit through where gitleaks is not installed. In the
+                  cce workspace it first runs cce-lease check-commit
+                  (cce-compositor/scripts), which refuses a Claude
+                  session's commit of another session's work
 install-hooks.sh  symlinks both hooks into every repo in repos.conf
 
 Publishing model
