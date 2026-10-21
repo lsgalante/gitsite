@@ -12,7 +12,7 @@ set -eu
 BASE=$(dirname "$(readlink -f "$0")")
 # hook-name=file, one pair per word.
 HOOKS="pre-commit=pre-commit-scan post-commit=post-commit-push"
-WORK_ROOTS="${GIT_WORK_ROOTS:-$HOME/projects/cce $HOME/projects}"
+WORK_ROOTS="${GIT_WORK_ROOTS:-$HOME/src/cce $HOME/src}"
 FAILED=""
 
 names=$(grep -v '^#' "$BASE/repos.conf" | grep -v '^[[:space:]]*$' | cut -d'|' -f1)
