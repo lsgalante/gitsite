@@ -10,6 +10,14 @@
 # network is down -- the commit stands and the message below says so; fix it
 # with an ordinary git pull / git push. Nothing is pushed on a detached HEAD
 # or while a rebase is replaying commits.
+#
+# CCE_DEFER_PUSH=1 in the committer's environment skips the push: the caller
+# has promised to push the commit itself. The cce workspace's bump-revs.sh
+# commits forty-odd crates in one run, and a push from each commit, one after
+# another, was most of the run's time; it pushes them in parallel itself, and
+# reports any push that fails. Nothing else should set it.
+
+[ "${CCE_DEFER_PUSH:-}" = 1 ] && exit 0
 
 branch=$(git symbolic-ref --quiet --short HEAD) || exit 0
 git_dir=$(git rev-parse --git-dir)

@@ -31,7 +31,8 @@ post-commit-push as its post-commit hook, so in practice the push happens
 on commit and a plain commit IS the publishing step. The hook never forces:
 a rejected push leaves the commit local and says so, and you resolve it
 with git pull / git push as usual. It does nothing on a detached HEAD or
-mid-rebase.
+mid-rebase, or when the committer sets CCE_DEFER_PUSH=1: the cce
+workspace's bump-revs.sh does, and pushes its commits in parallel itself.
 
 pre-commit-scan runs first: with gitleaks installed it scans the staged
 diff and refuses a commit that looks like it carries a credential. Without
